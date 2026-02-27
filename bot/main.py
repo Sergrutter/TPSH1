@@ -1,11 +1,12 @@
 import asyncpg
-import httpx
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import os
+from gigachat import GigaChat
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-GIGACHAT_API_KEY = os.environ.get("GIGACHAT_API_KEY")
+GIGACHAT_CREDENTIALS = os.environ.get("GIGACHAT_CREDENTIALS")
 
 DB_HOST = os.environ.get("DB_HOST", "db")
 DB_PORT = int(os.environ.get("DB_PORT", 5432))
@@ -88,28 +89,24 @@ AND created_at::date = '2025-11-27';
 """
 
 
-async def generate_sql(question: str) -> str:
-    async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
-        resp = await client.post(
-            "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GIGACHAT_API_KEY}"},
-            json={
-                "model": "GigaChat",
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": question}
-                ]
-            },
+async def generate_sql(question: str, context) -> str:
+    giga = context.application.bot_data["giga"]
+
+    loop = asyncio.get_running_loop()
+
+    response = await loop.run_in_executor(
+        None,
+        lambda: giga.chat(
+            SYSTEM_PROMPT + "\n\nВопрос:\n" + question
         )
-    data = resp.json()
-    if "choices" not in data:
-        return f"Ошибка от GigaChat: {data}"
-    return data["choices"][0]["message"]["content"]
+    )
+
+    return response.choices[0].message.content.strip()
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = update.message.text
-    sql = await generate_sql(question)
+    sql = await generate_sql(question, context)
 
     if not sql.lower().startswith("select"):
         await update.message.reply_text("Ошибка запроса")
@@ -127,7 +124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(str(result))
 
 
-async def init_db(app):
+async def init_services(app):
     pool = await asyncpg.create_pool(
         host=DB_HOST,
         port=DB_PORT,
@@ -139,17 +136,19 @@ async def init_db(app):
     )
     app.bot_data["db_pool"] = pool
 
+    giga = GigaChat(credentials=GIGACHAT_CREDENTIALS, verify_ssl_certs=False)
+    app.bot_data["giga"] = giga
+
 
 def main():
     app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
-        .post_init(init_db)
+        .post_init(init_services)
         .build()
     )
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
     app.run_polling()
 
 
