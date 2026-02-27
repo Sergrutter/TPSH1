@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:15
+    container_name: videos_db
+    environment:
+      POSTGRES_DB: videos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Serg77
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  loader:
+    build: ./db
+    container_name: data_loader
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: videos_db
+      DB_USER: postgres
+      DB_PASSWORD: Serg77
+    command: ["python", "load_data.py"]
+    networks:
+      - app_network
+
+  bot:
+    build: ./bot
+    container_name: telegram_bot
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      loader:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
