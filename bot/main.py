@@ -110,6 +110,18 @@ AND created_at::date = '2025-11-27';
   FROM video_snapshots s
   JOIN videos v ON s.video_id = v.id
   WHERE s.created_at BETWEEN v.video_created_at AND v.video_created_at + INTERVAL '3 hours';
+  
+Важно для вопросов про количество видео:
+
+- Для подсчёта числа видео всегда использовать таблицу videos.
+- Для фильтрации по дате публикации видео использовать video_created_at, а не created_at.
+- Примеры:
+
+  Сколько видео появилось на платформе за май 2025:
+
+  SELECT COUNT(DISTINCT id)
+  FROM videos
+  WHERE video_created_at::date BETWEEN '2025-05-01' AND '2025-05-31';
 """
 
 
