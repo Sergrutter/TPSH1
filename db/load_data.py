@@ -18,7 +18,6 @@ def parse_datetime(value: str):
 
 
 async def create_tables(conn):
-    # Создаем таблицу videos
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             id UUID PRIMARY KEY,
@@ -33,7 +32,6 @@ async def create_tables(conn):
         )
     """)
 
-    # Создаем таблицу video_snapshots
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS video_snapshots (
             id UUID PRIMARY KEY,
@@ -53,7 +51,6 @@ async def create_tables(conn):
 
 
 async def main():
-    # Подключение к базе
     conn = await asyncpg.connect(
         host=DB_HOST,
         port=DB_PORT,
@@ -62,10 +59,8 @@ async def main():
         database=DB_NAME
     )
 
-    # Создаем таблицы, если их нет
     await create_tables(conn)
 
-    # Загружаем JSON с видео
     with open("data/videos.json", "r", encoding="utf-8") as f:
         videos = json.load(f)["videos"]
 
