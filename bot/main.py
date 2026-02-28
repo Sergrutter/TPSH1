@@ -104,8 +104,6 @@ AND created_at::date = '2025-11-27';
 - N часов берётся из текста вопроса (например: 'первые 5 часов' → INTERVAL '5 hours').
 - Примеры:
 
-  Для прироста комментариев за первые 5 часов после публикации каждого видео:
-
   SELECT COALESCE(SUM(s.delta_comments_count), 0)
   FROM video_snapshots s
   JOIN videos v ON s.video_id = v.id
@@ -117,11 +115,9 @@ AND created_at::date = '2025-11-27';
 - Для фильтрации по дате публикации видео использовать video_created_at, а не created_at.
 - Примеры:
 
-  Сколько видео появилось на платформе за июнь 2025:
-
   SELECT COUNT(DISTINCT id)
   FROM videos
-  WHERE video_created_at::date BETWEEN '2025-06-01' AND '2025-06-31';
+  WHERE video_created_at::date BETWEEN '2025-05-01' AND '2025-05-31';
 """
 
 
